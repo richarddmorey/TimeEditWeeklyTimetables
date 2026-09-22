@@ -56,8 +56,8 @@ src/
     help.ts                        Help modal open/close
 ```
 
-The module boundaries mirror the original spec's sections (§3 CSV pipeline,
-§8–9 combining/moving, §12 settings, etc.).
+The module boundaries mirror the original spec's sections (§2 CSV pipeline,
+§7–8 combining/moving, §11 settings, etc.).
 
 ## Local development
 
