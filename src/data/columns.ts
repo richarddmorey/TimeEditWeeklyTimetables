@@ -89,13 +89,19 @@ export function densifyColumns(events: CalendarEvent[]): void {
 /**
  * Move-and-repel cascade.
  *
- * When a cell moves from column i to column j:
- *   - if i < j (moved right): overlapping cells in columns (i, j] shift left
- *   - if i > j (moved left):  overlapping cells in columns [j, i) shift right
+ * X moves straight from column i to column j. That only disturbs anything
+ * else if column j is already occupied by an event overlapping X in time —
+ * an empty (or non-overlapping) target column means X simply relocates and
+ * nothing else needs to move.
  *
- * Each shifted cell becomes a "mover" in its own right and its direction
- * flips again (opposite to the shift it just received), producing the
- * alternating cascade the spec describes.
+ * When column j *is* occupied, the occupant(s) are bumped one column at a
+ * time, always in the same direction (opposite to X's own direction of
+ * travel, i.e. back towards X's old column). Each bumped event then checks
+ * *its own* new column for a further conflict, and so on, until a step lands
+ * on a column with no overlapping occupant. This walks only the contiguous
+ * chain of genuine conflicts — it never touches a column that was never
+ * actually blocking anything, even if that column happens to sit between i
+ * and j and contains an event that overlaps X in time.
  *
  * BFS with a `visited` set prevents infinite loops and double-shifting.
  */
@@ -115,33 +121,78 @@ export function moveEvent(
   const i = X.col || 1;
   if (i === j) return false;
 
+  const dir = Math.sign(j - i);   // direction X travelled
+  const shiftDir = -dir;          // fixed direction bumped occupants travel
+
   const visited = new Set<CalendarEvent>([X]);
+  let shiftedAnyEvent = false;
   X.col = j;
 
-  const queue: { mover: CalendarEvent; i: number; j: number }[] = [{ mover: X, i, j }];
+  const queue: CalendarEvent[] = [X];
   while (queue.length) {
-    const { mover, i: mi, j: mj } = queue.shift()!;
-    const dir = Math.sign(mj - mi); // direction the mover travelled
-    const shiftDir = -dir;          // cells shift opposite to that
+    const mover = queue.shift()!;
+    const moverCol = mover.col || 1;
 
-    const affected = events.filter(ev =>
+    // Only events actually sitting in the mover's newly-claimed column and
+    // overlapping it in time are genuine blockers.
+    const blockers = events.filter(ev =>
       !visited.has(ev) &&
       ev !== mover &&
-      overlaps(ev, mover) &&
-      (dir > 0 ? (ev.col || 1) <= mj : (ev.col || 1) >= mj)
+      (ev.col || 1) === moverCol &&
+      overlaps(ev, mover)
     );
 
-    for (const ev of affected) {
-      if (visited.has(ev)) continue;
-      const evOld = ev.col || 1;
-      const evNew = evOld + shiftDir;
+    for (const ev of blockers) {
+      const evNew = moverCol + shiftDir;
       if (evNew < 1) continue; // cannot shift past column 1
       ev.col = evNew;
       visited.add(ev);
-      queue.push({ mover: ev, i: evOld, j: evNew });
+      shiftedAnyEvent = true;
+      queue.push(ev);
     }
   }
 
-  densifyColumns(events);
+  if (shiftedAnyEvent) densifyColumns(events);
   return true;
+}
+
+/**
+ * Collapses empty (from this event's point of view, non-conflicting) column
+ * gaps within a single day, sweeping columns left to right.
+ *
+ * For each column `c` from 2 upward, every event currently at column `c` is
+ * repeatedly shifted one column left as long as the column immediately to
+ * its left has no event overlapping it in time. Because columns are
+ * processed in ascending order, by the time column `c` is handled every
+ * lower column has already been fully compacted, so a single left-to-right
+ * sweep is enough — no further passes are needed.
+ *
+ * Returns true if anything moved (in which case columns are also
+ * densified to remove any resulting gaps).
+ */
+export function collapseColumns(events: CalendarEvent[]): boolean {
+  if (!events || events.length <= 1) return false;
+
+  const maxCol = Math.max(1, ...events.map(e => e.col || 1));
+  if (maxCol <= 1) return false; // single-column day
+
+  let movedAny = false;
+  for (let c = 2; c <= maxCol; c++) {
+    const colEvents = events.filter(ev => (ev.col || 1) === c);
+    for (const ev of colEvents) {
+      let cur = ev.col || 1;
+      while (cur > 1) {
+        const target = cur - 1;
+        const blocked = events.some(o =>
+          o !== ev && (o.col || 1) === target && overlaps(o, ev));
+        if (blocked) break;
+        cur = target;
+        movedAny = true;
+      }
+      ev.col = cur;
+    }
+  }
+
+  if (movedAny) densifyColumns(events);
+  return movedAny;
 }

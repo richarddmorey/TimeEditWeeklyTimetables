@@ -1,5 +1,6 @@
+import { DAYS_TO_SHOW } from '../constants';
 import { state } from '../state';
-import { canCombine, combineEvents, densifyColumns, assignColumns } from './columns';
+import { canCombine, combineEvents, densifyColumns, assignColumns, collapseColumns } from './columns';
 import { render } from '../ui/render';
 import type { CalendarEvent } from '../types';
 
@@ -35,4 +36,17 @@ export function deleteEventAndRender(ev: CalendarEvent): void {
   state.eventsByDay[day] = state.eventsByDay[day].filter(e => e !== ev);
   densifyColumns(state.eventsByDay[day]);
   render();
+}
+
+/**
+ * Collapses empty column gaps to the left, independently for every weekday.
+ * Triggered by the "Collapse empty columns" settings button.
+ */
+export function collapseColumnsAndRender(): void {
+  if (!state.eventsByDay) return;
+  let anyMoved = false;
+  for (const day of DAYS_TO_SHOW) {
+    if (collapseColumns(state.eventsByDay[day])) anyMoved = true;
+  }
+  if (anyMoved) render();
 }

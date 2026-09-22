@@ -8,6 +8,7 @@ import {
 } from './week1picker';
 import { openHelp } from './help';
 import { loadCsvFile } from './upload';
+import { collapseColumnsAndRender } from '../data/mutations';
 
 function applyTimeRange(): void {
   let s = parseInt(dom.startHourIn.value, 10);
@@ -70,12 +71,18 @@ export function setupSettingsHandlers(): void {
     e.stopPropagation();
     dom.fileInput2.click();
   });
+
   dom.fileInput2.addEventListener('change', e => {
     const target = e.target as HTMLInputElement;
     if (target.files && target.files[0]) loadCsvFile(target.files[0]);
     target.value = '';
     dom.settingsPanel.classList.remove('open');
     hideWeek1Picker();
+  });
+
+  dom.collapseColumnsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    collapseColumnsAndRender();
   });
 
   dom.helpBtn.addEventListener('click', e => {

@@ -30,10 +30,12 @@ src/
     csv.ts                  Papa Parse pipeline: preamble skip, row
                              filtering, grouping, time-range auto-expansion
     columns.ts               Interval colouring (assignColumns), column
-                             densification, combine/canCombine, and the
-                             move-and-repel drag cascade (moveEvent)
-    mutations.ts              combine / break-apart / delete, each of which
-                              mutates state and triggers a re-render
+                             densification, combine/canCombine, the
+                             move-and-repel drag cascade (moveEvent), and
+                             the column-collapse sweep (collapseColumns)
+    mutations.ts              combine / break-apart / delete / collapse
+                              columns, each of which mutates state and
+                              triggers a re-render
 
   ui/
     dom.ts                   One-time lookup of every static DOM node
@@ -278,13 +280,22 @@ Dropping a cell onto **empty column space** (not another cell) triggers move-and
 Let X be the dragged event, currently at column `i`, moved to target column `j`.
 
 1. If `i == j`, no-op.
-2. Otherwise, compute direction: `X` moves right (`i < j`) or left (`i > j`).
-3. Determine the range of cells to shift:
-   - If `i < j`: overlapping cells in columns `(i, j]` shift **left** by 1.
-   - If `i > j`: overlapping cells in columns `[j, i)` shift **right** by 1.
-4. Place X at column `j`.
-5. **Recursively**: for each shifted cell, check for new overlaps with non-shifted cells; shift those in the same direction, and continue until stable.
-6. Densify columns (remove gaps).
+2. Place X at column `j`.
+3. If no event currently at column `j` overlaps X in time, stop — X has
+   simply relocated and nothing else needs to move.
+4. Otherwise, each overlapping event at column `j` is a genuine blocker and
+   is bumped one column in the direction opposite to X's own movement
+   (`i < j` → blockers shift left; `i > j` → blockers shift right).
+5. **Recursively**: each bumped event then checks *its own* new column for a
+   further overlapping occupant, bumping it the same direction, and so on
+   until a step lands on a column with no conflict. This walks only the
+   contiguous chain of genuine conflicts — an event that overlaps X in time
+   but sits in a column that was never actually blocking the move (e.g. an
+   in-between column whose own target slot was already free) is left
+   untouched.
+6. If any cells were repelled, densify columns (remove gaps). A move into a
+   column with no overlapping cells moves only X and preserves the other
+   columns' positions.
 
 Cells are always clamped to `col >= 1`.
 
@@ -333,11 +344,26 @@ Two number inputs (default 9 and 18). Clamped to `0 ≤ start < end ≤ 24`.
 - The list is regenerated whenever the settings panel opens or the calendar re-renders.
 - When a title is edited, the list is updated; **unchanged titles keep their tick state**, and any **new title defaults to unticked**.
 
-### 11.4 Load another CSV
+### 11.4 Collapse empty columns
+
+- Button labelled "Collapse empty columns".
+- For every weekday independently, sweeps columns left to right starting
+  at column 2: each event currently in that column is repeatedly shifted
+  one column left as long as the column immediately to its left has no
+  event overlapping it in time, stopping as soon as a conflict is hit.
+- Because columns are processed in ascending order, each column has
+  already been fully compacted by the time the next one is handled, so a
+  single left-to-right sweep suffices — no repeated passes are needed.
+- Afterwards, columns are densified to close any gaps left by events that
+  moved out of them entirely.
+- Does not change any event's day, start time, or duration — only its
+  column.
+
+### 11.5 Load another CSV
 
 Triggers the hidden file input.
 
-### 11.5 Help
+### 11.6 Help
 
 Opens the help modal.
 
@@ -465,4 +491,3 @@ highlightedTitles  — Set<string> of titles to highlight
 - [ ] Help modal with all sections including PDF tip
 - [ ] Two CDN dependencies
 - [ ] Single-file delivery
-

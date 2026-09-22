@@ -31,6 +31,7 @@ export const dom = {} as {
   settingsClose: HTMLButtonElement;
   startHourIn: HTMLInputElement;
   endHourIn: HTMLInputElement;
+  collapseColumnsBtn: HTMLButtonElement;
   loadCsvBtn: HTMLButtonElement;
   helpBtn: HTMLButtonElement;
   fileInput2: HTMLInputElement;
@@ -68,6 +69,7 @@ export function initDom(): void {
   dom.settingsClose = reqId('settings-close');
   dom.startHourIn = reqId('start-hour');
   dom.endHourIn = reqId('end-hour');
+  dom.collapseColumnsBtn = reqId('collapse-columns-btn');
   dom.loadCsvBtn = reqId('load-csv-btn');
   dom.helpBtn = reqId('help-btn');
   dom.fileInput2 = reqId('file-input-2');
