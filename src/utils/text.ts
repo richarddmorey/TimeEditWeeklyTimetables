@@ -42,18 +42,37 @@ export function abbreviateStaff(staffStr: string): string {
     .join(', ');
 }
 
-/** [1,2,3,5,8,9,10] -> "1-3,5,8-10" */
+/**
+ * Formats a (possibly negative) integer using the Unicode minus sign
+ * (U+2212, "−") rather than the ASCII hyphen-minus, so it can't be
+ * confused with the hyphen used as a range separator below.
+ */
+function formatSignedNum(n: number): string {
+  return n < 0 ? `\u2212${-n}` : String(n);
+}
+
+/**
+ * [1,2,3,5,8,9,10] -> "1—3,5,8—10"
+ *
+ * Week numbers may be zero or negative (weeks before "Week 1"). Negative
+ * numbers are rendered with the Unicode minus sign ("−"), while range
+ * separators use the longer em dash ("—") instead of a plain hyphen, so
+ * the two are visually distinct and e.g. [-3,-2,-1,1] becomes
+ * "−3—−1,1" without ambiguity between them.
+ */
 export function abbrNumList(nums: number[]): string {
   const x = [...new Set(nums)].sort((a, b) => a - b);
   if (x.length === 0) return '';
-  if (x.length === 1) return String(x[0]);
+  if (x.length === 1) return formatSignedNum(x[0]);
   const groups: number[][] = [[x[0]]];
   for (let i = 1; i < x.length; i++) {
     if (x[i] === x[i - 1] + 1) groups[groups.length - 1].push(x[i]);
     else groups.push([x[i]]);
   }
   return groups
-    .map(g => (g.length > 2 ? `${g[0]}-${g[g.length - 1]}` : g.join(',')))
+    .map(g => (g.length > 2
+      ? `${formatSignedNum(g[0])}\u2014${formatSignedNum(g[g.length - 1])}`
+      : g.map(formatSignedNum).join(',')))
     .join(',');
 }
 
