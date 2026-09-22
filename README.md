@@ -1,5 +1,7 @@
 # TimeEdit weekly timetable generator
 
+Live app: https://richarddmorey.github.io/TimeEditWeeklyTimetables/
+
 An interactive weekly timetable that reads a TimeEdit CSV export and renders
 it as a draggable, searchable, editable calendar — entirely client-side.
 
