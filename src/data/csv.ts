@@ -97,7 +97,6 @@ export function processRows(rows: CsvRow[]): void {
     const weekdayName = DAY_NAMES[startDate.getDay()];
     const eventSundayTs = sundayOf(startDate).getTime();
     const weeknum = Math.round((eventSundayTs - week1Ts) / (7 * 24 * 3600 * 1000)) + 1;
-    if (weeknum < 1) continue;
 
     const norm = normaliseTitleAndType(row['Title'], row['Activity Type']);
 

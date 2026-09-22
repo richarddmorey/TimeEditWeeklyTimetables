@@ -25,7 +25,7 @@ src/
   utils/
     date.ts                 DD/MM/YYYY parsing, Sunday-of-week helper
     text.ts                 HTML escaping, staff-name abbreviation,
-                             week-list compaction ("1-3,5,8-10"), merging
+                             week-list compaction ("1—3,5,8—10"), merging
     toast.ts                 The small red error toast
 
   data/
@@ -155,7 +155,10 @@ eventSunday = Sunday of the event's date
 weeknum     = round((eventSunday − week1Sunday) / 7 days) + 1
 ```
 
-Events with `weeknum < 1` are dropped.
+No events are dropped based on `weeknum`: events in weeks before Week 1
+simply get a week number of `0`, `-1`, `-2`, … . Changing Week 1 re-runs
+this calculation for every event, so all week numbers (positive, zero, and
+negative) are renumbered relative to the new Week 1.
 
 ### 2.6 Grouping
 
@@ -163,7 +166,12 @@ Events are grouped by `(weekday, startTotal, endTotal, moduleCode, eventTitle, e
 
 For each group:
 
-- Weeks merged and compacted: `[1,2,3,5,8,9,10]` → `"1-3,5,8-10"`.
+- Weeks merged and compacted: `[1,2,3,5,8,9,10]` → `"1—3,5,8—10"`.
+  Week numbers may be zero or negative; to avoid ambiguity between a
+  minus sign and a range separator, negative numbers are rendered with
+  the Unicode minus sign "−" (U+2212), while ranges use the longer em
+  dash "—" (U+2014) instead of a plain hyphen, e.g. `[-3,-2,-1,1]` →
+  `"−3—−1,1"`.
 - Staff strings merged and de-duplicated.
 
 ### 2.7 Column assignment
